@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html>
 <head>
     <link rel="shortcut icon" href="http://www.baidu.com/favicon.ico" type="image/x-icon">
@@ -292,3 +292,758 @@ $(function(){
 <div id="jsi-particle-container" class="container"></div>
 </body>
 </html>
+ -->
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0048)http://www.jq22.com/demo/jquery-3D-141226231826/ -->
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<title>漂亮的3D相片展示效果 </title>
+<meta http-equiv="imagetoolbar" content="no">
+<style type="text/css">
+
+	html {
+
+		overflow: hidden;
+
+	}
+
+	body {
+
+		position: absolute;
+
+		margin: 0px;
+
+		padding: 0px;
+
+		background: #eee;
+
+		width: 100%;
+
+		height: 100%;
+
+		color: #fff;
+
+		font-family: arial;
+
+		font-size: 0.8em;
+
+	}
+
+	#screen {
+
+		position: absolute;
+
+		width: 100%;
+
+		height: 100%;
+
+		background: #000;
+
+		overflow: hidden;
+
+	}
+
+	#screen img, canvas { 
+
+		position: absolute;
+
+		left: -9999px;
+
+		cursor: pointer;
+
+        image-rendering: optimizeSpeed;
+
+
+
+	}
+
+	#screen .href {
+
+		border: #FFF dotted 1px;
+
+	}
+
+	#screen .fog { 
+
+		position: absolute;
+
+		background: #fff;
+
+		opacity: 0.1;
+
+		filter: alpha(opacity=10);
+
+	}
+
+	#command {
+
+		position:absolute;
+
+		left: 1em;
+
+		top: 1em;
+
+		width: 130px;
+
+		z-index: 30000;
+
+		background:#000;
+
+		border: #000 solid 1em;
+
+	}
+
+	#bar {
+
+		position:relative;
+
+		left: 1em;
+
+		top: 1em;
+
+		height: 160px;
+
+	}
+
+	#bar .button { 
+
+		position: absolute;
+
+		background: #222;
+
+		width: 20px;
+
+		height: 20px;
+
+		cursor: pointer;
+
+	}
+
+	#bar .loaded { 
+
+		background: #666;
+
+	}
+
+	#bar .viewed { 
+
+		background: #fff;
+
+	}
+
+	#bar .selected { 
+
+		background: #f00;
+
+	}
+
+	#urlInfo {
+
+		position: absolute;
+
+		background: url(images/r.gif) no-repeat 0 4px;
+
+		visibility: hidden;
+
+		z-index: 30000;
+
+		padding-left: 12px;
+
+		cursor: pointer;
+
+	}
+
+</style>
+<script type="text/javascript">
+
+// =============================================================
+
+//           ===== 3D gallery experiment =====
+
+// script written by Gerard Ferrandez - April 5, 2010
+
+// http://www.dhteumeuleu.com
+
+// use under a CC-BY-NC license
+
+// -------------------------------------------------------------
+
+// update: April 17 : added hyperlinks, tweaked z-index
+
+// =============================================================
+
+
+
+var m3D = function () {
+
+	/* ---- private vars ---- */
+
+	var diapo = [],
+
+		imb,
+
+		scr,
+
+		bar,
+
+		selected,
+
+		urlInfo,
+
+		imagesPath = "images/",
+
+		camera = {x:0, y:0, z:-650, s:0, fov: 500},
+
+		nw = 0,
+
+		nh = 0;
+
+	/* ==== camera tween methods ==== */
+
+	camera.setTarget = function (c0, t1, p) {
+
+		if (Math.abs(t1 - c0) > .1) {
+
+			camera.s = 1;
+
+			camera.p = 0;
+
+			camera.d = t1 - c0;
+
+			if (p) {
+
+				camera.d *= 2;
+
+				camera.p = 9;
+
+			}
+
+		}
+
+	}
+
+	camera.tween = function (v) {
+
+		if (camera.s != 0) {
+
+			camera.p += camera.s;
+
+			camera[v] += camera.d * camera.p * .01;
+
+			if (camera.p == 10) camera.s = -1;
+
+			else if (camera.p == 0) camera.s = 0;
+
+		}
+
+		return camera.s;
+
+	}
+
+	/* ==== diapo constructor ==== */
+
+	var Diapo = function (n, img, x, y, z) {
+
+		if (img) {
+
+			this.url = img.url;
+
+			this.title = img.title;
+
+			this.color = img.color;
+
+			this.isLoaded = false;
+
+			if (document.createElement("canvas").getContext) {
+
+				/* ---- using canvas in place of images (performance trick) ---- */
+
+				this.srcImg = new Image();
+
+				this.srcImg.src = imagesPath + img.src;
+
+				this.img = document.createElement("canvas");
+
+				this.canvas = true;
+
+				scr.appendChild(this.img);
+
+			} else {
+
+				/* ---- normal image ---- */
+
+				this.img = document.createElement('img');
+
+				this.img.src = imagesPath + img.src;
+
+				scr.appendChild(this.img);
+
+			}
+
+			/* ---- on click event ---- */
+
+			this.img.onclick = function () {
+
+				if (camera.s) return;
+
+				if (this.diapo.isLoaded) {
+
+					if (this.diapo.urlActive) {
+
+						/* ---- jump hyperlink ---- */
+
+						top.location.href = this.diapo.url;
+
+					} else {
+
+						/* ---- target positions ---- */
+
+						camera.tz = this.diapo.z - camera.fov;
+
+						camera.tx = this.diapo.x;
+
+						camera.ty = this.diapo.y;
+
+						/* ---- disable previously selected img ---- */
+
+						if (selected) {
+
+							selected.but.className = "button viewed";
+
+							selected.img.className = "";
+
+							selected.img.style.cursor = "pointer";
+
+							selected.urlActive = false;
+
+							urlInfo.style.visibility = "hidden";
+
+						}
+
+						/* ---- select current img ---- */
+
+						this.diapo.but.className = "button selected";
+
+						interpolation(false);
+
+						selected = this.diapo;
+
+					}
+
+				}
+
+			}
+
+			/* ---- command bar buttons ---- */
+
+			this.but = document.createElement('div');
+
+			this.but.className = "button";
+
+			bar.appendChild(this.but);
+
+			this.but.diapo = this;
+
+			this.but.style.left = Math.round((this.but.offsetWidth  * 1.2) * (n % 4)) + 'px';
+
+			this.but.style.top  = Math.round((this.but.offsetHeight * 1.2) * Math.floor(n / 4)) + 'px';
+
+			this.but.onclick = this.img.onclick;
+
+			imb = this.img;
+
+			this.img.diapo = this;
+
+			this.zi = 25000;
+
+		} else {
+
+			/* ---- transparent div ---- */
+
+			this.img = document.createElement('div');
+
+			this.isLoaded = true;
+
+			this.img.className = "fog";
+
+			scr.appendChild(this.img);
+
+			this.w = 300;
+
+			this.h = 300;
+
+			this.zi = 15000;
+
+		}
+
+		/* ---- object variables ---- */
+
+		this.x = x;
+
+		this.y = y;
+
+		this.z = z;
+
+		this.css = this.img.style;
+
+	}
+
+	/* ==== main 3D animation ==== */
+
+	Diapo.prototype.anim = function () {
+
+		if (this.isLoaded) {
+
+			/* ---- 3D to 2D projection ---- */
+
+			var x = this.x - camera.x;
+
+			var y = this.y - camera.y;
+
+			var z = this.z - camera.z;
+
+			if (z < 20) z += 5000;
+
+			var p = camera.fov / z;
+
+			var w = this.w * p;
+
+			var h = this.h * p;
+
+			/* ---- HTML rendering ---- */
+
+			this.css.left   = Math.round(nw + x * p - w * .5) + 'px';
+
+			this.css.top    = Math.round(nh + y * p - h * .5) + 'px';  
+
+			this.css.width  = Math.round(w) + 'px';
+
+			this.css.height = Math.round(h) + 'px';
+
+			this.css.zIndex = this.zi - Math.round(z);
+
+		} else {
+
+			/* ---- image is loaded? ---- */
+
+			this.isLoaded = this.loading();
+
+		}
+
+	}
+
+	/* ==== onload initialization ==== */
+
+	Diapo.prototype.loading = function () {
+
+		if ((this.canvas && this.srcImg.complete) || this.img.complete) {
+
+			if (this.canvas) {
+
+				/* ---- canvas version ---- */
+
+				this.w = this.srcImg.width;
+
+				this.h = this.srcImg.height;
+
+				this.img.width = this.w;
+
+				this.img.height = this.h;
+
+				var context = this.img.getContext("2d");
+
+				context.drawImage(this.srcImg, 0, 0, this.w, this.h);
+
+			} else {
+
+				/* ---- plain image version ---- */
+
+				this.w = this.img.width;
+
+				this.h = this.img.height;
+
+			}
+
+			/* ---- button loaded ---- */
+
+			this.but.className += " loaded";
+
+			return true;
+
+		}
+
+		return false;
+
+	}
+
+	////////////////////////////////////////////////////////////////////////////
+
+	/* ==== screen dimensions ==== */
+
+	var resize = function () {
+
+		nw = scr.offsetWidth * .5;
+
+		nh = scr.offsetHeight * .5;
+
+	}
+
+	/* ==== disable interpolation during animation ==== */
+
+	var interpolation = function (bicubic) {
+
+		var i = 0, o;
+
+		while( o = diapo[i++] ) {
+
+			if (o.but) {
+
+				o.css.msInterpolationMode = bicubic ? 'bicubic' : 'nearest-neighbor'; // makes IE8 happy
+
+				o.css.imageRendering = bicubic ? 'optimizeQuality' : 'optimizeSpeed'; // does not really work...
+
+			}
+
+		}
+
+	}
+
+	/* ==== init script ==== */
+
+	var init = function (data) {
+
+		/* ---- containers ---- */
+
+		scr = document.getElementById("screen");
+
+		bar = document.getElementById("bar");
+
+		urlInfo = document.getElementById("urlInfo");
+
+		resize();
+
+		/* ---- loading images ---- */
+
+		var i = 0, 
+
+		    o,
+
+			n = data.length;
+
+		while( o = data[i++] ) {
+
+			/* ---- images ---- */
+
+			var x = 1000 * ((i % 4) - 1.5);
+
+			var y = Math.round(Math.random() * 4000) - 2000;
+
+			var z = i * (5000 / n);
+
+			diapo.push( new Diapo(i - 1, o, x, y, z));
+
+			/* ---- transparent frames ---- */
+
+			var k = diapo.length - 1;
+
+			for (var j = 0; j < 3; j++) {
+
+				var x = Math.round(Math.random() * 4000) - 2000;
+
+				var y = Math.round(Math.random() * 4000) - 2000;
+
+				diapo.push( new Diapo(k, null, x, y, z + 100));
+
+			}
+
+		}
+
+		/* ---- start engine ---- */
+
+		run();
+
+	}
+
+	////////////////////////////////////////////////////////////////////////////
+
+	/* ==== main loop ==== */
+
+	var run = function () {
+
+		/* ---- x axis move ---- */
+
+		if (camera.tx) {
+
+			if (!camera.s) camera.setTarget(camera.x, camera.tx);
+
+			var m = camera.tween('x');
+
+			if (!m) camera.tx = 0;
+
+		/* ---- y axis move ---- */
+
+		} else if (camera.ty) {
+
+			if (!camera.s) camera.setTarget(camera.y, camera.ty); 
+
+			var m = camera.tween('y');
+
+			if (!m) camera.ty = 0;
+
+		/* ---- z axis move ---- */
+
+		} else if (camera.tz) {
+
+			if (!camera.s) camera.setTarget(camera.z, camera.tz);
+
+			var m = camera.tween('z');
+
+			if (!m) {
+
+				/* ---- animation end ---- */
+
+				camera.tz = 0;
+
+				interpolation(true);
+
+				/* ---- activate hyperlink ---- */
+
+				if (selected.url) {
+
+					selected.img.style.cursor = "pointer";
+
+					selected.urlActive = true;
+
+					selected.img.className = "href";
+
+					urlInfo.diapo = selected;
+
+					urlInfo.onclick = selected.img.onclick;
+
+					urlInfo.innerHTML = selected.title || selected.url;
+
+					urlInfo.style.visibility = "visible";
+
+					urlInfo.style.color = selected.color || "#fff";
+
+					urlInfo.style.top = Math.round(selected.img.offsetTop + selected.img.offsetHeight - urlInfo.offsetHeight - 5) + "px";
+
+					urlInfo.style.left = Math.round(selected.img.offsetLeft + selected.img.offsetWidth - urlInfo.offsetWidth - 5) + "px";
+
+				} else {
+
+					selected.img.style.cursor = "default";
+
+				}
+
+			}
+
+		}
+
+		/* ---- anim images ---- */
+
+		var i = 0, o;
+
+		while( o = diapo[i++] ) o.anim();
+
+		/* ---- loop ---- */
+
+		setTimeout(run, 32);
+
+	}
+
+	return {
+
+		////////////////////////////////////////////////////////////////////////////
+
+		/* ==== initialize script ==== */
+
+		init : init
+
+	}
+
+}();
+
+
+
+</script>
+</head>
+<body>
+<div id="screen">
+<div id="command">
+<h1>deliberate lies</h1>
+Defiant, stony, deliberate, their lies will not get in my way.
+<div id="bar"><div class="button loaded" style="left: 0px; top: 0px;"></div><div class="button loaded" style="left: 24px; top: 0px;"></div><div class="button loaded" style="left: 48px; top: 0px;"></div><div class="button loaded" style="left: 72px; top: 0px;"></div><div class="button loaded" style="left: 0px; top: 24px;"></div><div class="button loaded" style="left: 24px; top: 24px;"></div><div class="button loaded" style="left: 48px; top: 24px;"></div><div class="button loaded" style="left: 72px; top: 24px;"></div><div class="button loaded" style="left: 0px; top: 48px;"></div><div class="button loaded" style="left: 24px; top: 48px;"></div><div class="button loaded" style="left: 48px; top: 48px;"></div><div class="button loaded" style="left: 72px; top: 48px;"></div><div class="button loaded" style="left: 0px; top: 72px;"></div><div class="button loaded" style="left: 24px; top: 72px;"></div><div class="button loaded" style="left: 48px; top: 72px;"></div><div class="button loaded" style="left: 72px; top: 72px;"></div><div class="button loaded" style="left: 0px; top: 96px;"></div><div class="button loaded" style="left: 24px; top: 96px;"></div><div class="button loaded" style="left: 48px; top: 96px;"></div><div class="button loaded" style="left: 72px; top: 96px;"></div><div class="button loaded" style="left: 0px; top: 120px;"></div><div class="button loaded" style="left: 24px; top: 120px;"></div><div class="button loaded" style="left: 48px; top: 120px;"></div><div class="button loaded" style="left: 72px; top: 120px;"></div></div>
+</div>
+<div id="urlInfo"></div>
+<canvas width="333" height="500" style="left: 572px; top: 762px; width: 194px; height: 291px; z-index: 24142;"></canvas><div class="fog" style="left: 1477px; top: 67px; width: 157px; height: 157px; z-index: 14042;"></div><div class="fog" style="left: 651px; top: -255px; width: 157px; height: 157px; z-index: 14042;"></div><div class="fog" style="left: 1900px; top: 648px; width: 157px; height: 157px; z-index: 14042;"></div><canvas width="357" height="500" style="left: 1111px; top: 349px; width: 167px; height: 234px; z-index: 23933;"></canvas><div class="fog" style="left: 1227px; top: 290px; width: 129px; height: 129px; z-index: 13833;"></div><div class="fog" style="left: 1167px; top: -440px; width: 129px; height: 129px; z-index: 13833;"></div><div class="fog" style="left: 1234px; top: 143px; width: 129px; height: 129px; z-index: 13833;"></div><canvas width="500" height="375" style="left: 1450px; top: 1009px; width: 196px; height: 147px; z-index: 23725;"></canvas><div class="fog" style="left: 1221px; top: 538px; width: 109px; height: 109px; z-index: 13625;"></div><div class="fog" style="left: 1486px; top: 69px; width: 109px; height: 109px; z-index: 13625;"></div><div class="fog" style="left: 699px; top: 590px; width: 109px; height: 109px; z-index: 13625;"></div><canvas width="500" height="333" style="left: 370px; top: 386px; width: 169px; height: 112px; z-index: 23517;"></canvas><div class="fog" style="left: 1440px; top: 761px; width: 95px; height: 95px; z-index: 13417;"></div><div class="fog" style="left: 891px; top: 214px; width: 95px; height: 95px; z-index: 13417;"></div><div class="fog" style="left: 850px; top: 285px; width: 95px; height: 95px; z-index: 13417;"></div><canvas width="400" height="500" style="left: 753px; top: 69px; width: 118px; height: 148px; z-index: 23308;"></canvas><div class="fog" style="left: 1368px; top: 651px; width: 84px; height: 84px; z-index: 13208;"></div><div class="fog" style="left: 1468px; top: 716px; width: 84px; height: 84px; z-index: 13208;"></div><div class="fog" style="left: 785px; top: -150px; width: 84px; height: 84px; z-index: 13208;"></div><canvas width="500" height="333" style="left: 1026px; top: 148px; width: 132px; height: 88px; z-index: 23100;"></canvas><div class="fog" style="left: 1052px; top: 603px; width: 75px; height: 75px; z-index: 13000;"></div><div class="fog" style="left: 1050px; top: 376px; width: 75px; height: 75px; z-index: 13000;"></div><div class="fog" style="left: 830px; top: -68px; width: 75px; height: 75px; z-index: 13000;"></div><canvas width="500" height="345" style="left: 1256px; top: 10px; width: 119px; height: 82px; z-index: 22892;"></canvas><div class="fog" style="left: 1147px; top: 57px; width: 68px; height: 68px; z-index: 12792;"></div><div class="fog" style="left: 701px; top: 793px; width: 68px; height: 68px; z-index: 12792;"></div><div class="fog" style="left: 1352px; top: 638px; width: 68px; height: 68px; z-index: 12792;"></div><canvas width="500" height="333" style="left: 582px; top: 483px; width: 108px; height: 72px; z-index: 22683;"></canvas><div class="fog" style="left: 1159px; top: 359px; width: 62px; height: 62px; z-index: 12583;"></div><div class="fog" style="left: 569px; top: 795px; width: 62px; height: 62px; z-index: 12583;"></div><div class="fog" style="left: 671px; top: 458px; width: 62px; height: 62px; z-index: 12583;"></div><canvas width="500" height="334" style="left: 811px; top: 412px; width: 99px; height: 66px; z-index: 22475;"></canvas><div class="fog" style="left: 767px; top: 182px; width: 57px; height: 57px; z-index: 12375;"></div><div class="fog" style="left: 740px; top: 347px; width: 57px; height: 57px; z-index: 12375;"></div><div class="fog" style="left: 696px; top: 693px; width: 57px; height: 57px; z-index: 12375;"></div><canvas width="375" height="500" style="left: 1017px; top: 324px; width: 69px; height: 91px; z-index: 22267;"></canvas><div class="fog" style="left: 738px; top: 512px; width: 53px; height: 53px; z-index: 12167;"></div><div class="fog" style="left: 838px; top: 494px; width: 53px; height: 53px; z-index: 12167;"></div><div class="fog" style="left: 1020px; top: 738px; width: 53px; height: 53px; z-index: 12167;"></div><canvas width="500" height="334" style="left: 1172px; top: 612px; width: 85px; height: 57px; z-index: 22058;"></canvas><div class="fog" style="left: 1156px; top: 357px; width: 49px; height: 49px; z-index: 11958;"></div><div class="fog" style="left: 704px; top: 289px; width: 49px; height: 49px; z-index: 11958;"></div><div class="fog" style="left: 673px; top: 576px; width: 49px; height: 49px; z-index: 11958;"></div><canvas width="500" height="334" style="left: 682px; top: 421px; width: 79px; height: 53px; z-index: 21850;"></canvas><div class="fog" style="left: 1172px; top: 184px; width: 46px; height: 46px; z-index: 11750;"></div><div class="fog" style="left: 893px; top: 319px; width: 46px; height: 46px; z-index: 11750;"></div><div class="fog" style="left: 1070px; top: 219px; width: 46px; height: 46px; z-index: 11750;"></div><canvas width="333" height="500" style="left: 861px; top: 571px; width: 50px; height: 74px; z-index: 21642;"></canvas><div class="fog" style="left: 836px; top: 442px; width: 43px; height: 43px; z-index: 11542;"></div><div class="fog" style="left: 783px; top: 620px; width: 43px; height: 43px; z-index: 11542;"></div><div class="fog" style="left: 1060px; top: 241px; width: 43px; height: 43px; z-index: 11542;"></div><canvas width="500" height="375" style="left: 995px; top: 276px; width: 70px; height: 53px; z-index: 21433;"></canvas><div class="fog" style="left: 871px; top: 404px; width: 41px; height: 41px; z-index: 11333;"></div><div class="fog" style="left: 1070px; top: 524px; width: 41px; height: 41px; z-index: 11333;"></div><div class="fog" style="left: 880px; top: 242px; width: 41px; height: 41px; z-index: 11333;"></div><canvas width="500" height="333" style="left: 1126px; top: 276px; width: 66px; height: 44px; z-index: 21225;"></canvas><div class="fog" style="left: 974px; top: 448px; width: 39px; height: 39px; z-index: 11125;"></div><div class="fog" style="left: 984px; top: 379px; width: 39px; height: 39px; z-index: 11125;"></div><div class="fog" style="left: 718px; top: 352px; width: 39px; height: 39px; z-index: 11125;"></div><canvas width="333" height="500" style="left: 751px; top: 387px; width: 42px; height: 63px; z-index: 21017;"></canvas><div class="fog" style="left: 917px; top: 365px; width: 37px; height: 37px; z-index: 10917;"></div><div class="fog" style="left: 1024px; top: 651px; width: 37px; height: 37px; z-index: 10917;"></div><div class="fog" style="left: 738px; top: 503px; width: 37px; height: 37px; z-index: 10917;"></div><canvas width="500" height="394" style="left: 871px; top: 616px; width: 60px; height: 47px; z-index: 20808;"></canvas><div class="fog" style="left: 742px; top: 510px; width: 35px; height: 35px; z-index: 10708;"></div><div class="fog" style="left: 806px; top: 266px; width: 35px; height: 35px; z-index: 10708;"></div><div class="fog" style="left: 1021px; top: 450px; width: 35px; height: 35px; z-index: 10708;"></div><canvas width="500" height="377" style="left: 988px; top: 221px; width: 57px; height: 43px; z-index: 20600;"></canvas><div class="fog" style="left: 730px; top: 455px; width: 33px; height: 33px; z-index: 10500;"></div><div class="fog" style="left: 987px; top: 461px; width: 33px; height: 33px; z-index: 10500;"></div><div class="fog" style="left: 977px; top: 242px; width: 33px; height: 33px; z-index: 10500;"></div><canvas width="500" height="333" style="left: 1096px; top: 367px; width: 54px; height: 36px; z-index: 20392;"></canvas><div class="fog" style="left: 763px; top: 562px; width: 32px; height: 32px; z-index: 10292;"></div><div class="fog" style="left: 821px; top: 282px; width: 32px; height: 32px; z-index: 10292;"></div><div class="fog" style="left: 919px; top: 547px; width: 32px; height: 32px; z-index: 10292;"></div><canvas width="263" height="500" style="left: 791px; top: 439px; width: 27px; height: 52px; z-index: 20183;"></canvas><div class="fog" style="left: 1104px; top: 346px; width: 31px; height: 31px; z-index: 10083;"></div><div class="fog" style="left: 985px; top: 352px; width: 31px; height: 31px; z-index: 10083;"></div><div class="fog" style="left: 1039px; top: 280px; width: 31px; height: 31px; z-index: 10083;"></div><canvas width="500" height="375" style="left: 885px; top: 483px; width: 50px; height: 37px; z-index: 19975;"></canvas><div class="fog" style="left: 942px; top: 276px; width: 29px; height: 29px; z-index: 9875;"></div><div class="fog" style="left: 1078px; top: 529px; width: 29px; height: 29px; z-index: 9875;"></div><div class="fog" style="left: 833px; top: 349px; width: 29px; height: 29px; z-index: 9875;"></div><canvas width="500" height="375" style="left: 984px; top: 327px; width: 48px; height: 36px; z-index: 19767;"></canvas><div class="fog" style="left: 791px; top: 255px; width: 28px; height: 28px; z-index: 9667;"></div><div class="fog" style="left: 902px; top: 544px; width: 28px; height: 28px; z-index: 9667;"></div><div class="fog" style="left: 966px; top: 571px; width: 28px; height: 28px; z-index: 9667;"></div><canvas width="429" height="500" style="left: 1078px; top: 552px; width: 39px; height: 46px; z-index: 19558;"></canvas><div class="fog" style="left: 975px; top: 588px; width: 27px; height: 27px; z-index: 9458;"></div><div class="fog" style="left: 947px; top: 279px; width: 27px; height: 27px; z-index: 9458;"></div><div class="fog" style="left: 840px; top: 458px; width: 27px; height: 27px; z-index: 9458;"></div><canvas width="375" height="500" style="left: 811px; top: 435px; width: 33px; height: 44px; z-index: 19350;"></canvas><div class="fog" style="left: 1037px; top: 409px; width: 26px; height: 26px; z-index: 9250;"></div><div class="fog" style="left: 919px; top: 597px; width: 26px; height: 26px; z-index: 9250;"></div><div class="fog" style="left: 953px; top: 565px; width: 26px; height: 26px; z-index: 9250;"></div></div>
+<script type="text/javascript">
+
+/* ==== start script ==== */
+
+setTimeout(function() {
+
+	m3D.init(
+
+		[ 
+
+			{ src: '1.jpg', url: '', title: 'jump to random script', color: '#fff' },
+
+			{ src: '2.jpg' },
+
+			{ src: '3.jpg' },
+
+			{ src: '4.jpg' },
+
+			{ src: '5.jpg' },
+
+			{ src: '6.jpg' },
+
+			{ src: '7.jpg' },
+
+			{ src: '8.jpg' },
+
+			{ src: '9.jpg' },
+
+			{ src: '10.jpg' },
+
+			{ src: '11.gif' },
+
+			{ src: '12.jpg' },
+
+			{ src: '13.jpg' },
+
+			{ src: '14.jpg' },
+
+			{ src: '15.jpg' },
+
+			{ src: '16.jpg' },
+
+			{ src: '17.jpg' },
+
+			{ src: '18.jpg' },
+
+			{ src: '19.jpg' },
+
+			{ src: '20.jpg' },
+
+			{ src: '21.jpg' },
+
+			{ src: '22.jpg' },
+
+			{ src: '23.jpg' },
+
+			{ src: '24.jpg', url: '', color: '#fff' }
+
+		]
+
+	);
+
+}, 500);
+
+</script>
+
+
+</body></html>
