@@ -1,309 +1,14 @@
-<!-- <!DOCTYPE html>
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0048)http://www.jq22.com/demo/jquery-3D-141226231826/ -->
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <link rel="shortcut icon" href="http://www.baidu.com/favicon.ico" type="image/x-icon">
-    <title> 萌萌哒小姐姐诶 </title>
-    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-    <script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
-var RENDERER = {
-	PARTICLE_COUNT : 1000,
-	PARTICLE_RADIUS : 1,
-	MAX_ROTATION_ANGLE : Math.PI / 60,
-	TRANSLATION_COUNT : 500,
-
-	init : function(strategy){
-		this.setParameters(strategy);
-		this.createParticles();
-		this.setupFigure();
-		this.reconstructMethod();
-		this.bindEvent();
-		this.drawFigure();
-	},
-	setParameters : function(strategy){
-		this.$window = $(window);
-
-		this.$container = $('#jsi-particle-container');
-		this.width = this.$container.width();
-		this.height = this.$container.height();
-
-		this.$canvas = $('<canvas />').attr({width : this.width, height : this.height}).appendTo(this.$container);
-		this.context = this.$canvas.get(0).getContext('2d');
-
-		this.center = {x : this.width / 2, y : this.height / 2};
-
-		this.rotationX = this.MAX_ROTATION_ANGLE;
-		this.rotationY = this.MAX_ROTATION_ANGLE;
-		this.strategyIndex = 0;
-		this.translationCount = 0;
-		this.theta = 0;
-
-		this.strategies = strategy.getStrategies();
-		this.particles = [];
-	},
-	createParticles : function(){
-		for(var i = 0; i < this.PARTICLE_COUNT; i ++){
-			this.particles.push(new PARTICLE(this.center));
-		}
-	},
-	reconstructMethod : function(){
-		this.setupFigure = this.setupFigure.bind(this);
-		this.drawFigure = this.drawFigure.bind(this);
-		this.changeAngle = this.changeAngle.bind(this);
-	},
-	bindEvent : function(){
-		this.$container.on('click', this.setupFigure);
-		this.$container.on('mousemove', this.changeAngle);
-	},
-	changeAngle : function(event){
-		var offset = this.$container.offset(),
-			x = event.clientX - offset.left + this.$window.scrollLeft(),
-			y = event.clientY - offset.top + this.$window.scrollTop();
-
-		this.rotationX = (this.center.y - y) / this.center.y * this.MAX_ROTATION_ANGLE;
-		this.rotationY = (this.center.x - x) / this.center.x * this.MAX_ROTATION_ANGLE;
-	},
-	setupFigure : function(){
-		for(var i = 0, length = this.particles.length; i < length; i++){
-			this.particles[i].setAxis(this.strategies[this.strategyIndex]());
-		}
-		if(++this.strategyIndex == this.strategies.length){
-			this.strategyIndex = 0;
-		}
-		this.translationCount = 0;
-	},
-	drawFigure : function(){
-		requestAnimationFrame(this.drawFigure);
-
-		this.context.fillStyle = 'rgba(0, 0, 0, 0.2)';
-		this.context.fillRect(0, 0, this.width, this.height);
-
-		for(var i = 0, length = this.particles.length; i < length; i++){
-			var axis = this.particles[i].getAxis2D(this.theta);
-
-			this.context.beginPath();
-			this.context.fillStyle = axis.color;
-			this.context.arc(axis.x, axis.y, this.PARTICLE_RADIUS, 0, Math.PI * 2, false);
-			this.context.fill();
-		}
-		this.theta++;
-		this.theta %= 360;
-
-		for(var i = 0, length = this.particles.length; i < length; i++){
-			this.particles[i].rotateX(this.rotationX);
-			this.particles[i].rotateY(this.rotationY);
-		}
-		this.translationCount++;
-		this.translationCount %= this.TRANSLATION_COUNT;
-
-		if(this.translationCount == 0){
-			this.setupFigure();
-		}
-	}
-};
-var STRATEGY = {
-	SCATTER_RADIUS :150,
-	CONE_ASPECT_RATIO : 1.5,
-	RING_COUNT : 5,
-
-	getStrategies : function(){
-		var strategies = [];
-
-		for(var i in this){
-			if(this[i] == arguments.callee || typeof this[i] != 'function'){
-				continue;
-			}
-			strategies.push(this[i].bind(this));
-		}
-		return strategies;
-	},
-	createSphere : function(){
-		var cosTheta = Math.random() * 2 - 1,
-			sinTheta = Math.sqrt(1 - cosTheta * cosTheta),
-			phi = Math.random() * 2 * Math.PI;
-
-		return {
-			x : this.SCATTER_RADIUS * sinTheta * Math.cos(phi),
-			y : this.SCATTER_RADIUS * sinTheta * Math.sin(phi),
-			z : this.SCATTER_RADIUS * cosTheta,
-			hue : Math.round(phi / Math.PI * 30)
-		};
-	},
-	createTorus : function(){
-		var theta = Math.random() * Math.PI * 2,
-			x = this.SCATTER_RADIUS + this.SCATTER_RADIUS / 6 * Math.cos(theta),
-			y = this.SCATTER_RADIUS / 6 * Math.sin(theta),
-			phi = Math.random() * Math.PI * 2;
-
-		return {
-			x : x * Math.cos(phi),
-			y : y,
-			z : x * Math.sin(phi),
-			hue : Math.round(phi / Math.PI * 30)
-		};
-	},
-	createCone : function(){
-		var status = Math.random() > 1 / 3,
-			x,
-			y,
-			phi = Math.random() * Math.PI * 2,
-			rate = Math.tan(30 / 180 * Math.PI) / this.CONE_ASPECT_RATIO;
-
-		if(status){
-			y = this.SCATTER_RADIUS * (1 - Math.random() * 2);
-			x = (this.SCATTER_RADIUS - y) * rate;
-		}else{
-			y = -this.SCATTER_RADIUS;
-			x = this.SCATTER_RADIUS * 2 * rate * Math.random();
-		}
-		return {
-			x : x * Math.cos(phi),
-			y : y,
-			z : x * Math.sin(phi),
-			hue : Math.round(phi / Math.PI * 30)
-		};
-	},
-	createVase : function(){
-		var theta = Math.random() * Math.PI,
-			x = Math.abs(this.SCATTER_RADIUS * Math.cos(theta) / 2) + this.SCATTER_RADIUS / 8,
-			y = this.SCATTER_RADIUS * Math.cos(theta) * 1.2,
-			phi = Math.random() * Math.PI * 2;
-
-		return {
-			x : x * Math.cos(phi),
-			y : y,
-			z : x * Math.sin(phi),
-			hue : Math.round(phi / Math.PI * 30)
-		};
-	}
-};
-var PARTICLE = function(center){
-	this.center = center;
-	this.init();
-};
-PARTICLE.prototype = {
-	SPRING : 0.01,
-	FRICTION : 0.9,
-	FOCUS_POSITION : 300,
-	COLOR : 'hsl(%hue, 100%, 70%)',
-
-	init : function(){
-		this.x = 0;
-		this.y = 0;
-		this.z = 0;
-		this.vx = 0;
-		this.vy = 0;
-		this.vz = 0;
-		this.color;
-	},
-	setAxis : function(axis){
-		this.translating = true;
-		this.nextX = axis.x;
-		this.nextY = axis.y;
-		this.nextZ = axis.z;
-		this.hue = axis.hue;
-	},
-	rotateX : function(angle){
-		var sin = Math.sin(angle),
-			cos = Math.cos(angle),
-			nextY = this.nextY * cos - this.nextZ * sin,
-			nextZ = this.nextZ * cos + this.nextY * sin,
-			y = this.y * cos - this.z * sin,
-			z = this.z * cos + this.y * sin;
-
-		this.nextY = nextY;
-		this.nextZ = nextZ;
-		this.y = y;
-		this.z = z;
-	},
-	rotateY : function(angle){
-		var sin = Math.sin(angle),
-			cos = Math.cos(angle),
-			nextX = this.nextX * cos - this.nextZ * sin,
-			nextZ = this.nextZ * cos + this.nextX * sin,
-			x = this.x * cos - this.z * sin,
-			z = this.z * cos + this.x * sin;
-
-		this.nextX = nextX;
-		this.nextZ = nextZ;
-		this.x = x;
-		this.z = z;
-	},
-	rotateZ : function(angle){
-		var sin = Math.sin(angle),
-			cos = Math.cos(angle),
-			nextX = this.nextX * cos - this.nextY * sin,
-			nextY = this.nextY * cos + this.nextX * sin,
-			x = this.x * cos - this.y * sin,
-			y = this.y * cos + this.x * sin;
-
-		this.nextX = nextX;
-		this.nextY = nextY;
-		this.x = x;
-		this.y = y;
-	},
-	getAxis3D : function(){
-		this.vx += (this.nextX - this.x) * this.SPRING;
-		this.vy += (this.nextY - this.y) * this.SPRING;
-		this.vz += (this.nextZ - this.z) * this.SPRING;
-
-		this.vx *= this.FRICTION;
-		this.vy *= this.FRICTION;
-		this.vz *= this.FRICTION;
-
-		this.x += this.vx;
-		this.y += this.vy;
-		this.z += this.vz;
-
-		return {x : this.x, y : this.y, z : this.z};
-	},
-	getAxis2D : function(theta){
-		var axis = this.getAxis3D(),
-			scale = this.FOCUS_POSITION / (this.FOCUS_POSITION + axis.z);
-
-		return {x : this.center.x + axis.x * scale, y : this.center.y - axis.y * scale, color : this.COLOR.replace('%hue', this.hue + theta)};
-	}
-};
-$(function(){
-	RENDERER.init(STRATEGY);
-});
-</script>
-
-
-    <style>
-    html,body {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-}
-.container{
-    width: 100％;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    background-color: #000000;
-}
-</style>
-</head>
-<body>
-	<div>欢迎萌萌哒的小姐姐！</div>
-<div id="jsi-particle-container" class="container"></div>
-</body>
-</html>
- -->
-
-
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<!-- saved from url=(0048)http://www.jq22.com/demo/jquery-3D-141226231826/ -->
-<html xmlns="http://www.w3.org/1999/xhtml"><head>
-	  <link rel="shortcut icon" href="http://www.baidu.com/favicon.ico" type="image/x-icon">
-	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
-<title>当今社会超帅男神大全</title>
-<meta http-equiv="imagetoolbar" content="no">
-<style type="text/css">
+    <title>当今社会超帅男神大全献给呆萌呆萌的吴雯雯童鞋</title>
+    <meta http-equiv="imagetoolbar" content="no">
+    <style type="text/css">
 
 	html {
 
@@ -457,8 +162,9 @@ $(function(){
 
 	}
 
-</style>
-<script type="text/javascript">
+
+    </style>
+    <script type="text/javascript">
 
 // =============================================================
 
@@ -969,18 +675,237 @@ var m3D = function () {
 }();
 
 
-
-</script>
+    </script>
 </head>
 <body>
 <div id="screen">
-<div id="command">
-<h1>deliberate lies</h1>
-Defiant, stony, deliberate, their lies will not get in my way.
-<div id="bar"><div class="button loaded" style="left: 0px; top: 0px;"></div><div class="button loaded" style="left: 24px; top: 0px;"></div><div class="button loaded" style="left: 48px; top: 0px;"></div><div class="button loaded" style="left: 72px; top: 0px;"></div><div class="button loaded" style="left: 0px; top: 24px;"></div><div class="button loaded" style="left: 24px; top: 24px;"></div><div class="button loaded" style="left: 48px; top: 24px;"></div><div class="button loaded" style="left: 72px; top: 24px;"></div><div class="button loaded" style="left: 0px; top: 48px;"></div><div class="button loaded" style="left: 24px; top: 48px;"></div><div class="button loaded" style="left: 48px; top: 48px;"></div><div class="button loaded" style="left: 72px; top: 48px;"></div><div class="button loaded" style="left: 0px; top: 72px;"></div><div class="button loaded" style="left: 24px; top: 72px;"></div><div class="button loaded" style="left: 48px; top: 72px;"></div><div class="button loaded" style="left: 72px; top: 72px;"></div><div class="button loaded" style="left: 0px; top: 96px;"></div><div class="button loaded" style="left: 24px; top: 96px;"></div><div class="button loaded" style="left: 48px; top: 96px;"></div><div class="button loaded" style="left: 72px; top: 96px;"></div><div class="button loaded" style="left: 0px; top: 120px;"></div><div class="button loaded" style="left: 24px; top: 120px;"></div><div class="button loaded" style="left: 48px; top: 120px;"></div><div class="button loaded" style="left: 72px; top: 120px;"></div></div>
+    <div id="command">
+        <h1>超帅气的男神 For You</h1>
+       	你的笑容像是我昨晚的moonlight
+        <audio controls>
+            <source src="media/饭思思 - 有些人.mp3" type="audio/mpeg">
+        </audio>
+        <div id="bar">
+            <div class="button loaded" style="left: 0px; top: 0px;"></div>
+            <div class="button loaded" style="left: 24px; top: 0px;"></div>
+            <div class="button loaded" style="left: 48px; top: 0px;"></div>
+            <div class="button loaded" style="left: 72px; top: 0px;"></div>
+            <div class="button loaded" style="left: 0px; top: 24px;"></div>
+            <div class="button loaded" style="left: 24px; top: 24px;"></div>
+            <div class="button loaded" style="left: 48px; top: 24px;"></div>
+            <div class="button loaded" style="left: 72px; top: 24px;"></div>
+            <div class="button loaded" style="left: 0px; top: 48px;"></div>
+            <div class="button loaded" style="left: 24px; top: 48px;"></div>
+            <div class="button loaded" style="left: 48px; top: 48px;"></div>
+            <div class="button loaded" style="left: 72px; top: 48px;"></div>
+            <div class="button loaded" style="left: 0px; top: 72px;"></div>
+            <div class="button loaded" style="left: 24px; top: 72px;"></div>
+            <div class="button loaded" style="left: 48px; top: 72px;"></div>
+            <div class="button loaded" style="left: 72px; top: 72px;"></div>
+            <div class="button loaded" style="left: 0px; top: 96px;"></div>
+            <div class="button loaded" style="left: 24px; top: 96px;"></div>
+            <div class="button loaded" style="left: 48px; top: 96px;"></div>
+            <div class="button loaded" style="left: 72px; top: 96px;"></div>
+            <div class="button loaded" style="left: 0px; top: 120px;"></div>
+            <div class="button loaded" style="left: 24px; top: 120px;"></div>
+            <div class="button loaded" style="left: 48px; top: 120px;"></div>
+            <div class="button loaded" style="left: 72px; top: 120px;"></div>
+        </div>
+    </div>
+    <div id="urlInfo"></div>
+    <canvas width="333" height="500"
+            style="left: 572px; top: 762px; width: 194px; height: 291px; z-index: 24142;"></canvas>
+    <div class="fog"
+         style="left: 1477px; top: 67px; width: 157px; height: 157px; z-index: 14042;"></div>
+    <div class="fog"
+         style="left: 651px; top: -255px; width: 157px; height: 157px; z-index: 14042;"></div>
+    <div class="fog"
+         style="left: 1900px; top: 648px; width: 157px; height: 157px; z-index: 14042;"></div>
+    <canvas width="357" height="500"
+            style="left: 1111px; top: 349px; width: 167px; height: 234px; z-index: 23933;"></canvas>
+    <div class="fog"
+         style="left: 1227px; top: 290px; width: 129px; height: 129px; z-index: 13833;"></div>
+    <div class="fog"
+         style="left: 1167px; top: -440px; width: 129px; height: 129px; z-index: 13833;"></div>
+    <div class="fog"
+         style="left: 1234px; top: 143px; width: 129px; height: 129px; z-index: 13833;"></div>
+    <canvas width="500" height="375"
+            style="left: 1450px; top: 1009px; width: 196px; height: 147px; z-index: 23725;"></canvas>
+    <div class="fog"
+         style="left: 1221px; top: 538px; width: 109px; height: 109px; z-index: 13625;"></div>
+    <div class="fog"
+         style="left: 1486px; top: 69px; width: 109px; height: 109px; z-index: 13625;"></div>
+    <div class="fog"
+         style="left: 699px; top: 590px; width: 109px; height: 109px; z-index: 13625;"></div>
+    <canvas width="500" height="333"
+            style="left: 370px; top: 386px; width: 169px; height: 112px; z-index: 23517;"></canvas>
+    <div class="fog"
+         style="left: 1440px; top: 761px; width: 95px; height: 95px; z-index: 13417;"></div>
+    <div class="fog"
+         style="left: 891px; top: 214px; width: 95px; height: 95px; z-index: 13417;"></div>
+    <div class="fog"
+         style="left: 850px; top: 285px; width: 95px; height: 95px; z-index: 13417;"></div>
+    <canvas width="400" height="500"
+            style="left: 753px; top: 69px; width: 118px; height: 148px; z-index: 23308;"></canvas>
+    <div class="fog"
+         style="left: 1368px; top: 651px; width: 84px; height: 84px; z-index: 13208;"></div>
+    <div class="fog"
+         style="left: 1468px; top: 716px; width: 84px; height: 84px; z-index: 13208;"></div>
+    <div class="fog"
+         style="left: 785px; top: -150px; width: 84px; height: 84px; z-index: 13208;"></div>
+    <canvas width="500" height="333"
+            style="left: 1026px; top: 148px; width: 132px; height: 88px; z-index: 23100;"></canvas>
+    <div class="fog"
+         style="left: 1052px; top: 603px; width: 75px; height: 75px; z-index: 13000;"></div>
+    <div class="fog"
+         style="left: 1050px; top: 376px; width: 75px; height: 75px; z-index: 13000;"></div>
+    <div class="fog"
+         style="left: 830px; top: -68px; width: 75px; height: 75px; z-index: 13000;"></div>
+    <canvas width="500" height="345"
+            style="left: 1256px; top: 10px; width: 119px; height: 82px; z-index: 22892;"></canvas>
+    <div class="fog"
+         style="left: 1147px; top: 57px; width: 68px; height: 68px; z-index: 12792;"></div>
+    <div class="fog"
+         style="left: 701px; top: 793px; width: 68px; height: 68px; z-index: 12792;"></div>
+    <div class="fog"
+         style="left: 1352px; top: 638px; width: 68px; height: 68px; z-index: 12792;"></div>
+    <canvas width="500" height="333"
+            style="left: 582px; top: 483px; width: 108px; height: 72px; z-index: 22683;"></canvas>
+    <div class="fog"
+         style="left: 1159px; top: 359px; width: 62px; height: 62px; z-index: 12583;"></div>
+    <div class="fog"
+         style="left: 569px; top: 795px; width: 62px; height: 62px; z-index: 12583;"></div>
+    <div class="fog"
+         style="left: 671px; top: 458px; width: 62px; height: 62px; z-index: 12583;"></div>
+    <canvas width="500" height="334"
+            style="left: 811px; top: 412px; width: 99px; height: 66px; z-index: 22475;"></canvas>
+    <div class="fog"
+         style="left: 767px; top: 182px; width: 57px; height: 57px; z-index: 12375;"></div>
+    <div class="fog"
+         style="left: 740px; top: 347px; width: 57px; height: 57px; z-index: 12375;"></div>
+    <div class="fog"
+         style="left: 696px; top: 693px; width: 57px; height: 57px; z-index: 12375;"></div>
+    <canvas width="375" height="500"
+            style="left: 1017px; top: 324px; width: 69px; height: 91px; z-index: 22267;"></canvas>
+    <div class="fog"
+         style="left: 738px; top: 512px; width: 53px; height: 53px; z-index: 12167;"></div>
+    <div class="fog"
+         style="left: 838px; top: 494px; width: 53px; height: 53px; z-index: 12167;"></div>
+    <div class="fog"
+         style="left: 1020px; top: 738px; width: 53px; height: 53px; z-index: 12167;"></div>
+    <canvas width="500" height="334"
+            style="left: 1172px; top: 612px; width: 85px; height: 57px; z-index: 22058;"></canvas>
+    <div class="fog"
+         style="left: 1156px; top: 357px; width: 49px; height: 49px; z-index: 11958;"></div>
+    <div class="fog"
+         style="left: 704px; top: 289px; width: 49px; height: 49px; z-index: 11958;"></div>
+    <div class="fog"
+         style="left: 673px; top: 576px; width: 49px; height: 49px; z-index: 11958;"></div>
+    <canvas width="500" height="334"
+            style="left: 682px; top: 421px; width: 79px; height: 53px; z-index: 21850;"></canvas>
+    <div class="fog"
+         style="left: 1172px; top: 184px; width: 46px; height: 46px; z-index: 11750;"></div>
+    <div class="fog"
+         style="left: 893px; top: 319px; width: 46px; height: 46px; z-index: 11750;"></div>
+    <div class="fog"
+         style="left: 1070px; top: 219px; width: 46px; height: 46px; z-index: 11750;"></div>
+    <canvas width="333" height="500"
+            style="left: 861px; top: 571px; width: 50px; height: 74px; z-index: 21642;"></canvas>
+    <div class="fog"
+         style="left: 836px; top: 442px; width: 43px; height: 43px; z-index: 11542;"></div>
+    <div class="fog"
+         style="left: 783px; top: 620px; width: 43px; height: 43px; z-index: 11542;"></div>
+    <div class="fog"
+         style="left: 1060px; top: 241px; width: 43px; height: 43px; z-index: 11542;"></div>
+    <canvas width="500" height="375"
+            style="left: 995px; top: 276px; width: 70px; height: 53px; z-index: 21433;"></canvas>
+    <div class="fog"
+         style="left: 871px; top: 404px; width: 41px; height: 41px; z-index: 11333;"></div>
+    <div class="fog"
+         style="left: 1070px; top: 524px; width: 41px; height: 41px; z-index: 11333;"></div>
+    <div class="fog"
+         style="left: 880px; top: 242px; width: 41px; height: 41px; z-index: 11333;"></div>
+    <canvas width="500" height="333"
+            style="left: 1126px; top: 276px; width: 66px; height: 44px; z-index: 21225;"></canvas>
+    <div class="fog"
+         style="left: 974px; top: 448px; width: 39px; height: 39px; z-index: 11125;"></div>
+    <div class="fog"
+         style="left: 984px; top: 379px; width: 39px; height: 39px; z-index: 11125;"></div>
+    <div class="fog"
+         style="left: 718px; top: 352px; width: 39px; height: 39px; z-index: 11125;"></div>
+    <canvas width="333" height="500"
+            style="left: 751px; top: 387px; width: 42px; height: 63px; z-index: 21017;"></canvas>
+    <div class="fog"
+         style="left: 917px; top: 365px; width: 37px; height: 37px; z-index: 10917;"></div>
+    <div class="fog"
+         style="left: 1024px; top: 651px; width: 37px; height: 37px; z-index: 10917;"></div>
+    <div class="fog"
+         style="left: 738px; top: 503px; width: 37px; height: 37px; z-index: 10917;"></div>
+    <canvas width="500" height="394"
+            style="left: 871px; top: 616px; width: 60px; height: 47px; z-index: 20808;"></canvas>
+    <div class="fog"
+         style="left: 742px; top: 510px; width: 35px; height: 35px; z-index: 10708;"></div>
+    <div class="fog"
+         style="left: 806px; top: 266px; width: 35px; height: 35px; z-index: 10708;"></div>
+    <div class="fog"
+         style="left: 1021px; top: 450px; width: 35px; height: 35px; z-index: 10708;"></div>
+    <canvas width="500" height="377"
+            style="left: 988px; top: 221px; width: 57px; height: 43px; z-index: 20600;"></canvas>
+    <div class="fog"
+         style="left: 730px; top: 455px; width: 33px; height: 33px; z-index: 10500;"></div>
+    <div class="fog"
+         style="left: 987px; top: 461px; width: 33px; height: 33px; z-index: 10500;"></div>
+    <div class="fog"
+         style="left: 977px; top: 242px; width: 33px; height: 33px; z-index: 10500;"></div>
+    <canvas width="500" height="333"
+            style="left: 1096px; top: 367px; width: 54px; height: 36px; z-index: 20392;"></canvas>
+    <div class="fog"
+         style="left: 763px; top: 562px; width: 32px; height: 32px; z-index: 10292;"></div>
+    <div class="fog"
+         style="left: 821px; top: 282px; width: 32px; height: 32px; z-index: 10292;"></div>
+    <div class="fog"
+         style="left: 919px; top: 547px; width: 32px; height: 32px; z-index: 10292;"></div>
+    <canvas width="263" height="500"
+            style="left: 791px; top: 439px; width: 27px; height: 52px; z-index: 20183;"></canvas>
+    <div class="fog"
+         style="left: 1104px; top: 346px; width: 31px; height: 31px; z-index: 10083;"></div>
+    <div class="fog"
+         style="left: 985px; top: 352px; width: 31px; height: 31px; z-index: 10083;"></div>
+    <div class="fog"
+         style="left: 1039px; top: 280px; width: 31px; height: 31px; z-index: 10083;"></div>
+    <canvas width="500" height="375"
+            style="left: 885px; top: 483px; width: 50px; height: 37px; z-index: 19975;"></canvas>
+    <div class="fog"
+         style="left: 942px; top: 276px; width: 29px; height: 29px; z-index: 9875;"></div>
+    <div class="fog"
+         style="left: 1078px; top: 529px; width: 29px; height: 29px; z-index: 9875;"></div>
+    <div class="fog"
+         style="left: 833px; top: 349px; width: 29px; height: 29px; z-index: 9875;"></div>
+    <canvas width="500" height="375"
+            style="left: 984px; top: 327px; width: 48px; height: 36px; z-index: 19767;"></canvas>
+    <div class="fog"
+         style="left: 791px; top: 255px; width: 28px; height: 28px; z-index: 9667;"></div>
+    <div class="fog"
+         style="left: 902px; top: 544px; width: 28px; height: 28px; z-index: 9667;"></div>
+    <div class="fog"
+         style="left: 966px; top: 571px; width: 28px; height: 28px; z-index: 9667;"></div>
+    <canvas width="429" height="500"
+            style="left: 1078px; top: 552px; width: 39px; height: 46px; z-index: 19558;"></canvas>
+    <div class="fog"
+         style="left: 975px; top: 588px; width: 27px; height: 27px; z-index: 9458;"></div>
+    <div class="fog"
+         style="left: 947px; top: 279px; width: 27px; height: 27px; z-index: 9458;"></div>
+    <div class="fog"
+         style="left: 840px; top: 458px; width: 27px; height: 27px; z-index: 9458;"></div>
+    <canvas width="375" height="500"
+            style="left: 811px; top: 435px; width: 33px; height: 44px; z-index: 19350;"></canvas>
+    <div class="fog"
+         style="left: 1037px; top: 409px; width: 26px; height: 26px; z-index: 9250;"></div>
+    <div class="fog"
+         style="left: 919px; top: 597px; width: 26px; height: 26px; z-index: 9250;"></div>
+    <div class="fog"
+         style="left: 953px; top: 565px; width: 26px; height: 26px; z-index: 9250;"></div>
 </div>
-<div id="urlInfo"></div>
-<canvas width="333" height="500" style="left: 572px; top: 762px; width: 194px; height: 291px; z-index: 24142;"></canvas><div class="fog" style="left: 1477px; top: 67px; width: 157px; height: 157px; z-index: 14042;"></div><div class="fog" style="left: 651px; top: -255px; width: 157px; height: 157px; z-index: 14042;"></div><div class="fog" style="left: 1900px; top: 648px; width: 157px; height: 157px; z-index: 14042;"></div><canvas width="357" height="500" style="left: 1111px; top: 349px; width: 167px; height: 234px; z-index: 23933;"></canvas><div class="fog" style="left: 1227px; top: 290px; width: 129px; height: 129px; z-index: 13833;"></div><div class="fog" style="left: 1167px; top: -440px; width: 129px; height: 129px; z-index: 13833;"></div><div class="fog" style="left: 1234px; top: 143px; width: 129px; height: 129px; z-index: 13833;"></div><canvas width="500" height="375" style="left: 1450px; top: 1009px; width: 196px; height: 147px; z-index: 23725;"></canvas><div class="fog" style="left: 1221px; top: 538px; width: 109px; height: 109px; z-index: 13625;"></div><div class="fog" style="left: 1486px; top: 69px; width: 109px; height: 109px; z-index: 13625;"></div><div class="fog" style="left: 699px; top: 590px; width: 109px; height: 109px; z-index: 13625;"></div><canvas width="500" height="333" style="left: 370px; top: 386px; width: 169px; height: 112px; z-index: 23517;"></canvas><div class="fog" style="left: 1440px; top: 761px; width: 95px; height: 95px; z-index: 13417;"></div><div class="fog" style="left: 891px; top: 214px; width: 95px; height: 95px; z-index: 13417;"></div><div class="fog" style="left: 850px; top: 285px; width: 95px; height: 95px; z-index: 13417;"></div><canvas width="400" height="500" style="left: 753px; top: 69px; width: 118px; height: 148px; z-index: 23308;"></canvas><div class="fog" style="left: 1368px; top: 651px; width: 84px; height: 84px; z-index: 13208;"></div><div class="fog" style="left: 1468px; top: 716px; width: 84px; height: 84px; z-index: 13208;"></div><div class="fog" style="left: 785px; top: -150px; width: 84px; height: 84px; z-index: 13208;"></div><canvas width="500" height="333" style="left: 1026px; top: 148px; width: 132px; height: 88px; z-index: 23100;"></canvas><div class="fog" style="left: 1052px; top: 603px; width: 75px; height: 75px; z-index: 13000;"></div><div class="fog" style="left: 1050px; top: 376px; width: 75px; height: 75px; z-index: 13000;"></div><div class="fog" style="left: 830px; top: -68px; width: 75px; height: 75px; z-index: 13000;"></div><canvas width="500" height="345" style="left: 1256px; top: 10px; width: 119px; height: 82px; z-index: 22892;"></canvas><div class="fog" style="left: 1147px; top: 57px; width: 68px; height: 68px; z-index: 12792;"></div><div class="fog" style="left: 701px; top: 793px; width: 68px; height: 68px; z-index: 12792;"></div><div class="fog" style="left: 1352px; top: 638px; width: 68px; height: 68px; z-index: 12792;"></div><canvas width="500" height="333" style="left: 582px; top: 483px; width: 108px; height: 72px; z-index: 22683;"></canvas><div class="fog" style="left: 1159px; top: 359px; width: 62px; height: 62px; z-index: 12583;"></div><div class="fog" style="left: 569px; top: 795px; width: 62px; height: 62px; z-index: 12583;"></div><div class="fog" style="left: 671px; top: 458px; width: 62px; height: 62px; z-index: 12583;"></div><canvas width="500" height="334" style="left: 811px; top: 412px; width: 99px; height: 66px; z-index: 22475;"></canvas><div class="fog" style="left: 767px; top: 182px; width: 57px; height: 57px; z-index: 12375;"></div><div class="fog" style="left: 740px; top: 347px; width: 57px; height: 57px; z-index: 12375;"></div><div class="fog" style="left: 696px; top: 693px; width: 57px; height: 57px; z-index: 12375;"></div><canvas width="375" height="500" style="left: 1017px; top: 324px; width: 69px; height: 91px; z-index: 22267;"></canvas><div class="fog" style="left: 738px; top: 512px; width: 53px; height: 53px; z-index: 12167;"></div><div class="fog" style="left: 838px; top: 494px; width: 53px; height: 53px; z-index: 12167;"></div><div class="fog" style="left: 1020px; top: 738px; width: 53px; height: 53px; z-index: 12167;"></div><canvas width="500" height="334" style="left: 1172px; top: 612px; width: 85px; height: 57px; z-index: 22058;"></canvas><div class="fog" style="left: 1156px; top: 357px; width: 49px; height: 49px; z-index: 11958;"></div><div class="fog" style="left: 704px; top: 289px; width: 49px; height: 49px; z-index: 11958;"></div><div class="fog" style="left: 673px; top: 576px; width: 49px; height: 49px; z-index: 11958;"></div><canvas width="500" height="334" style="left: 682px; top: 421px; width: 79px; height: 53px; z-index: 21850;"></canvas><div class="fog" style="left: 1172px; top: 184px; width: 46px; height: 46px; z-index: 11750;"></div><div class="fog" style="left: 893px; top: 319px; width: 46px; height: 46px; z-index: 11750;"></div><div class="fog" style="left: 1070px; top: 219px; width: 46px; height: 46px; z-index: 11750;"></div><canvas width="333" height="500" style="left: 861px; top: 571px; width: 50px; height: 74px; z-index: 21642;"></canvas><div class="fog" style="left: 836px; top: 442px; width: 43px; height: 43px; z-index: 11542;"></div><div class="fog" style="left: 783px; top: 620px; width: 43px; height: 43px; z-index: 11542;"></div><div class="fog" style="left: 1060px; top: 241px; width: 43px; height: 43px; z-index: 11542;"></div><canvas width="500" height="375" style="left: 995px; top: 276px; width: 70px; height: 53px; z-index: 21433;"></canvas><div class="fog" style="left: 871px; top: 404px; width: 41px; height: 41px; z-index: 11333;"></div><div class="fog" style="left: 1070px; top: 524px; width: 41px; height: 41px; z-index: 11333;"></div><div class="fog" style="left: 880px; top: 242px; width: 41px; height: 41px; z-index: 11333;"></div><canvas width="500" height="333" style="left: 1126px; top: 276px; width: 66px; height: 44px; z-index: 21225;"></canvas><div class="fog" style="left: 974px; top: 448px; width: 39px; height: 39px; z-index: 11125;"></div><div class="fog" style="left: 984px; top: 379px; width: 39px; height: 39px; z-index: 11125;"></div><div class="fog" style="left: 718px; top: 352px; width: 39px; height: 39px; z-index: 11125;"></div><canvas width="333" height="500" style="left: 751px; top: 387px; width: 42px; height: 63px; z-index: 21017;"></canvas><div class="fog" style="left: 917px; top: 365px; width: 37px; height: 37px; z-index: 10917;"></div><div class="fog" style="left: 1024px; top: 651px; width: 37px; height: 37px; z-index: 10917;"></div><div class="fog" style="left: 738px; top: 503px; width: 37px; height: 37px; z-index: 10917;"></div><canvas width="500" height="394" style="left: 871px; top: 616px; width: 60px; height: 47px; z-index: 20808;"></canvas><div class="fog" style="left: 742px; top: 510px; width: 35px; height: 35px; z-index: 10708;"></div><div class="fog" style="left: 806px; top: 266px; width: 35px; height: 35px; z-index: 10708;"></div><div class="fog" style="left: 1021px; top: 450px; width: 35px; height: 35px; z-index: 10708;"></div><canvas width="500" height="377" style="left: 988px; top: 221px; width: 57px; height: 43px; z-index: 20600;"></canvas><div class="fog" style="left: 730px; top: 455px; width: 33px; height: 33px; z-index: 10500;"></div><div class="fog" style="left: 987px; top: 461px; width: 33px; height: 33px; z-index: 10500;"></div><div class="fog" style="left: 977px; top: 242px; width: 33px; height: 33px; z-index: 10500;"></div><canvas width="500" height="333" style="left: 1096px; top: 367px; width: 54px; height: 36px; z-index: 20392;"></canvas><div class="fog" style="left: 763px; top: 562px; width: 32px; height: 32px; z-index: 10292;"></div><div class="fog" style="left: 821px; top: 282px; width: 32px; height: 32px; z-index: 10292;"></div><div class="fog" style="left: 919px; top: 547px; width: 32px; height: 32px; z-index: 10292;"></div><canvas width="263" height="500" style="left: 791px; top: 439px; width: 27px; height: 52px; z-index: 20183;"></canvas><div class="fog" style="left: 1104px; top: 346px; width: 31px; height: 31px; z-index: 10083;"></div><div class="fog" style="left: 985px; top: 352px; width: 31px; height: 31px; z-index: 10083;"></div><div class="fog" style="left: 1039px; top: 280px; width: 31px; height: 31px; z-index: 10083;"></div><canvas width="500" height="375" style="left: 885px; top: 483px; width: 50px; height: 37px; z-index: 19975;"></canvas><div class="fog" style="left: 942px; top: 276px; width: 29px; height: 29px; z-index: 9875;"></div><div class="fog" style="left: 1078px; top: 529px; width: 29px; height: 29px; z-index: 9875;"></div><div class="fog" style="left: 833px; top: 349px; width: 29px; height: 29px; z-index: 9875;"></div><canvas width="500" height="375" style="left: 984px; top: 327px; width: 48px; height: 36px; z-index: 19767;"></canvas><div class="fog" style="left: 791px; top: 255px; width: 28px; height: 28px; z-index: 9667;"></div><div class="fog" style="left: 902px; top: 544px; width: 28px; height: 28px; z-index: 9667;"></div><div class="fog" style="left: 966px; top: 571px; width: 28px; height: 28px; z-index: 9667;"></div><canvas width="429" height="500" style="left: 1078px; top: 552px; width: 39px; height: 46px; z-index: 19558;"></canvas><div class="fog" style="left: 975px; top: 588px; width: 27px; height: 27px; z-index: 9458;"></div><div class="fog" style="left: 947px; top: 279px; width: 27px; height: 27px; z-index: 9458;"></div><div class="fog" style="left: 840px; top: 458px; width: 27px; height: 27px; z-index: 9458;"></div><canvas width="375" height="500" style="left: 811px; top: 435px; width: 33px; height: 44px; z-index: 19350;"></canvas><div class="fog" style="left: 1037px; top: 409px; width: 26px; height: 26px; z-index: 9250;"></div><div class="fog" style="left: 919px; top: 597px; width: 26px; height: 26px; z-index: 9250;"></div><div class="fog" style="left: 953px; top: 565px; width: 26px; height: 26px; z-index: 9250;"></div></div>
 <script type="text/javascript">
 
 /* ==== start script ==== */
@@ -1045,7 +970,9 @@ setTimeout(function() {
 
 }, 500);
 
+
 </script>
 
 
-</body></html>
+</body>
+</html>
